@@ -19,13 +19,39 @@ def mark_phoenix_ready() -> None:
     _phoenix_ready = True
 
 
+_phoenix_project_id = None
+
+
+def _fetch_project_id_sync() -> str:
+    global _phoenix_project_id
+    if _phoenix_project_id:
+        return _phoenix_project_id
+    settings = get_settings()
+    project_name = settings.phoenix_project_name
+    import httpx
+    try:
+        with httpx.Client(timeout=2.0) as client:
+            graphql_url = settings.phoenix_collector_endpoint.replace("/v1/traces", "/graphql")
+            resp = client.post(graphql_url, json={"query": "{ projects { edges { node { id name } } } }"})
+            if resp.status_code == 200:
+                edges = resp.json().get("data", {}).get("projects", {}).get("edges", [])
+                for edge in edges:
+                    node = edge.get("node", {})
+                    if node.get("name") == project_name:
+                        _phoenix_project_id = node.get("id")
+                        return _phoenix_project_id
+    except Exception:
+        pass
+    return "UHJvamVjdDoy"
+
+
 def phoenix_trace_url(conversation_id: str) -> str | None:
     if not is_phoenix_enabled():
         return None
     settings = get_settings()
     base = settings.phoenix_ui_url.rstrip("/")
-    project = settings.phoenix_project_name
-    return f"{base}/projects/{project}/spans?sessionId={conversation_id}"
+    project_id = _fetch_project_id_sync()
+    return f"{base}/projects/{project_id}/spans?sessionId={conversation_id}"
 
 
 def _messages_preview(messages: list[Message], limit: int = 4000) -> str:
