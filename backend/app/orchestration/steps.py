@@ -147,10 +147,38 @@ async def execute_trends_step(keyword: str) -> StepResult:
     return StepResult(capability="trends", parameter=keyword, data=data)
 
 
+import re
+
+TICKER_PATTERN = re.compile(r"^[A-Z0-9\.\-/]{1,12}$")
+
+
+async def _resolve_ticker(symbol: str) -> str:
+    cleaned = symbol.strip().upper()
+    if TICKER_PATTERN.match(cleaned):
+        return cleaned
+
+    messages = [
+        Message(
+            role="system",
+            content="Extract the stock ticker symbol (like AAPL, MSFT, RELIANCE.NS, 7203.T) from the user's query. Output only the ticker symbol, nothing else. If no stock ticker or company is mentioned, output None.",
+        ),
+        Message(role="user", content=symbol),
+    ]
+    try:
+        response = await router.complete_with_fallback(TaskType.QUERY_CLASSIFICATION, messages, max_tokens=10)
+        ticker = response.content.strip().strip("`").upper()
+        if ticker != "NONE" and " " not in ticker:
+            return ticker
+    except Exception:
+        pass
+    return cleaned
+
+
 async def execute_finance_step(symbol: str) -> StepResult:
-    quote = await run_finance_quote(symbol)
+    ticker = await _resolve_ticker(symbol)
+    quote = await run_finance_quote(ticker)
     if quote is None:
-        return StepResult(capability="finance", parameter=symbol, error=f"could not retrieve a quote for {symbol}")
+        return StepResult(capability="finance", parameter=ticker, error=f"could not retrieve a quote for {ticker}")
     data = {
         "symbol": quote.symbol,
         "price": quote.price,
@@ -161,7 +189,7 @@ async def execute_finance_step(symbol: str) -> StepResult:
         "fifty_two_week_high": quote.fifty_two_week_high,
         "fifty_two_week_low": quote.fifty_two_week_low,
     }
-    return StepResult(capability="finance", parameter=symbol, data=data)
+    return StepResult(capability="finance", parameter=ticker, data=data)
 
 
 async def execute_demographics_step(place: str) -> StepResult:
@@ -179,22 +207,24 @@ async def execute_demographics_step(place: str) -> StepResult:
 
 async def execute_finance_history_step(parameter: str) -> StepResult:
     parts = parameter.split(":")
-    symbol = parts[0].strip().upper() if parts else parameter.strip().upper()
+    symbol_part = parts[0].strip() if parts else parameter.strip()
     period = parts[1].strip() if len(parts) > 1 else "1y"
     valid_periods = {"1mo", "3mo", "6mo", "1y", "2y", "5y", "max"}
     if period not in valid_periods:
         period = "1y"
 
+    ticker = await _resolve_ticker(symbol_part)
     try:
-        points = await run_finance_history(symbol, period=period)
+        points = await run_finance_history(ticker, period=period)
         if not points:
-            return StepResult(capability="finance_history", parameter=symbol, error=f"no historical data found for {symbol}")
+            return StepResult(capability="finance_history", parameter=ticker, error=f"no historical data found for {ticker}")
         data = {
-            "symbol": symbol,
+            "symbol": ticker,
             "period": period,
             "points": [{"date": p.date, "close": p.close, "volume": p.volume} for p in points],
         }
-        return StepResult(capability="finance_history", parameter=symbol, data=data)
+        return StepResult(capability="finance_history", parameter=ticker, data=data)
     except Exception as exc:
         logger.error(f"finance_history step failed: {exc}")
-        return StepResult(capability="finance_history", parameter=symbol, error=str(exc))
+        return StepResult(capability="finance_history", parameter=ticker, error=str(exc))
+
