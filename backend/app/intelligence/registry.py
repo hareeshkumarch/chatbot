@@ -1,7 +1,9 @@
 from app.config import get_settings
 from app.intelligence.base import AnswerProvider, DemographicsProvider, FinanceProvider, SearchProvider, TrendsProvider
 from app.intelligence.providers.census_provider import CensusDemographicsProvider
+from app.intelligence.providers.duckduckgo_provider import DuckDuckGoProvider
 from app.intelligence.providers.exa_provider import ExaProvider
+from app.intelligence.providers.google_news_rss_provider import GoogleNewsRSSProvider
 from app.intelligence.providers.google_search_provider import GoogleSearchProvider
 from app.intelligence.providers.google_trends_provider import GoogleTrendsProvider
 from app.intelligence.providers.perplexity_provider import PerplexityProvider
@@ -14,6 +16,8 @@ _answer_instances: dict[str, AnswerProvider] = {}
 _demographics_instances: dict[str, DemographicsProvider] = {}
 _trends_instance: TrendsProvider | None = None
 _finance_instance: FinanceProvider | None = None
+_google_news_rss_instance: GoogleNewsRSSProvider | None = None
+_duckduckgo_instance: DuckDuckGoProvider | None = None
 
 
 def _build_search_registry() -> dict[str, SearchProvider]:
@@ -86,10 +90,27 @@ def get_finance_provider() -> FinanceProvider:
     return _finance_instance
 
 
+def get_google_news_rss_provider() -> GoogleNewsRSSProvider:
+    global _google_news_rss_instance
+    if _google_news_rss_instance is None:
+        _google_news_rss_instance = GoogleNewsRSSProvider()
+    return _google_news_rss_instance
+
+
+def get_duckduckgo_provider() -> DuckDuckGoProvider:
+    global _duckduckgo_instance
+    if _duckduckgo_instance is None:
+        _duckduckgo_instance = DuckDuckGoProvider()
+    return _duckduckgo_instance
+
+
 def reset_intelligence_registry() -> None:
-    global _search_instances, _answer_instances, _demographics_instances, _trends_instance, _finance_instance
+    global _search_instances, _answer_instances, _demographics_instances
+    global _trends_instance, _finance_instance, _google_news_rss_instance, _duckduckgo_instance
     _search_instances = {}
     _answer_instances = {}
     _demographics_instances = {}
     _trends_instance = None
     _finance_instance = None
+    _google_news_rss_instance = None
+    _duckduckgo_instance = None

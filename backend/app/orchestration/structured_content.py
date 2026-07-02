@@ -88,6 +88,25 @@ def extract_structured_blocks(plan_results: list[dict]) -> list[dict]:
                     "rows": metric_rows,
                 })
 
+        elif capability == "finance_history" and data:
+            points = data.get("points", [])
+            symbol = str(data.get("symbol") or parameter or "Stock")
+            period = data.get("period", "")
+            if len(points) >= 2:
+                step = max(1, len(points) // 60)
+                sampled = points[::step]
+                if points[-1] not in sampled:
+                    sampled.append(points[-1])
+                blocks.append({
+                    "type": "chart",
+                    "title": f"{symbol} closing price ({period})",
+                    "chart_type": "line",
+                    "labels": [str(p.get("date", "")) for p in sampled],
+                    "series": {
+                        "Close": [float(p.get("close", 0)) for p in sampled],
+                    },
+                })
+
         elif capability == "demographics" and data:
             if isinstance(data, dict) and any(isinstance(v, (int, float, str)) for v in data.values()):
                 blocks.append({

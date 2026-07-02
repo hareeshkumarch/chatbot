@@ -18,6 +18,7 @@ LIVE_DATA_CAPABILITIES = {
     "sql_data",
     "connector_action",
     "finance",
+    "finance_history",
     "trends",
     "demographics",
     "web_search",
@@ -124,6 +125,18 @@ def format_plan_results(plan_results: list[dict]) -> tuple[str, list[dict], list
 
         elif capability == "finance":
             blocks.append(f"Source: market data for {parameter}\n{json.dumps(data, default=str, indent=2)}")
+
+        elif capability == "finance_history":
+            points = data.get("points", [])
+            symbol = data.get("symbol", parameter or "stock")
+            period = data.get("period", "")
+            if points:
+                blocks.append(
+                    f"Source: historical prices for {symbol} ({period})\n"
+                    f"{format_rows_markdown(points, max_rows=30)}"
+                )
+            else:
+                blocks.append(f"[{label}] no historical data available")
 
         elif capability == "demographics":
             blocks.append(f"Source: demographics for {parameter}\n{json.dumps(data, default=str, indent=2)}")

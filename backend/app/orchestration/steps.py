@@ -8,6 +8,7 @@ from app.intelligence.registry import get_answer_providers
 from app.intelligence.router import (
     run_demographics_lookup,
     run_direct_answer,
+    run_finance_history,
     run_finance_quote,
     run_news_search,
     run_places_search,
@@ -116,14 +117,14 @@ async def execute_web_search_step(query: str) -> StepResult:
             )
     provider_name, results = await run_web_search(query)
     if not results:
-        return StepResult(capability="web_search", parameter=query, error="no web search providers are configured")
+        return StepResult(capability="web_search", parameter=query, error="no web search results found")
     return StepResult(capability="web_search", parameter=query, data={"results": _search_results_to_dicts(results), "provider": provider_name})
 
 
 async def execute_news_step(query: str) -> StepResult:
     provider_name, results = await run_news_search(query)
     if not results:
-        return StepResult(capability="news", parameter=query, error="no news providers are configured")
+        return StepResult(capability="news", parameter=query, error="no news results found")
     return StepResult(capability="news", parameter=query, data={"results": _search_results_to_dicts(results), "provider": provider_name})
 
 
@@ -174,3 +175,26 @@ async def execute_demographics_step(place: str) -> StepResult:
         "median_age": result.median_age,
     }
     return StepResult(capability="demographics", parameter=place, data=data)
+
+
+async def execute_finance_history_step(parameter: str) -> StepResult:
+    parts = parameter.split(":")
+    symbol = parts[0].strip().upper() if parts else parameter.strip().upper()
+    period = parts[1].strip() if len(parts) > 1 else "1y"
+    valid_periods = {"1mo", "3mo", "6mo", "1y", "2y", "5y", "max"}
+    if period not in valid_periods:
+        period = "1y"
+
+    try:
+        points = await run_finance_history(symbol, period=period)
+        if not points:
+            return StepResult(capability="finance_history", parameter=symbol, error=f"no historical data found for {symbol}")
+        data = {
+            "symbol": symbol,
+            "period": period,
+            "points": [{"date": p.date, "close": p.close, "volume": p.volume} for p in points],
+        }
+        return StepResult(capability="finance_history", parameter=symbol, data=data)
+    except Exception as exc:
+        logger.error(f"finance_history step failed: {exc}")
+        return StepResult(capability="finance_history", parameter=symbol, error=str(exc))

@@ -10,6 +10,7 @@ from app.orchestration.steps import (
     execute_connector_step,
     execute_demographics_step,
     execute_document_qa_step,
+    execute_finance_history_step,
     execute_finance_step,
     execute_news_step,
     execute_places_step,
@@ -43,6 +44,8 @@ async def _run_step(step: dict, state: GraphState, runtime: Runtime[GraphContext
         return await execute_trends_step(parameter), llm_calls
     if capability == "finance":
         return await execute_finance_step(parameter), llm_calls
+    if capability == "finance_history":
+        return await execute_finance_history_step(parameter), llm_calls
     if capability == "demographics":
         return await execute_demographics_step(parameter), llm_calls
     return StepResult(capability=str(capability), parameter=parameter, error=f"unhandled capability: {capability}"), llm_calls

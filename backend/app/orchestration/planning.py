@@ -6,7 +6,7 @@ from app.orchestration.telemetry import record_llm_call
 
 CAPABILITIES = {
     "document_qa", "sql_data", "connector_action",
-    "web_search", "news", "places", "trends", "finance", "demographics",
+    "web_search", "news", "places", "trends", "finance", "finance_history", "demographics",
 }
 
 MAX_PLAN_STEPS = 3

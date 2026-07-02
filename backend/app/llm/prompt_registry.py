@@ -24,7 +24,7 @@ def _needs_format(template: str, kwargs: dict) -> bool:
 
 QUERY_CLASSIFICATION = PromptTemplate(
     task="query_classification",
-    version="3",
+    version="4",
     system=(
         "Break the user's question into the data source(s) needed to answer it completely, then output a plan.\n\n"
         "Available capabilities:\n"
@@ -33,13 +33,18 @@ QUERY_CLASSIFICATION = PromptTemplate(
         "sql_data - the tenant's own database (counts, aggregates, records)\n"
         "connector_action - search or act on a connected tool (Slack, GitHub, Jira)\n"
         "web_search:optimized_query - open, current-events, or general-knowledge web questions\n"
-        "news:optimized_query - recent news, headlines, or 'what's happening with X'\n"
+        "news:optimized_query - recent news, headlines, or 'what's happening with X'. Include country or region in the query for local news.\n"
         "places:optimized_query - local businesses, venues, or things at a physical location\n"
         "trends:keyword - how interest or search volume in something has changed over time\n"
-        "finance:TICKER - a stock price, quote, market cap, or other public company data\n"
+        "finance:TICKER - a stock price, quote, market cap, or other public company data. "
+        "Use the correct exchange ticker: AAPL for Apple, RELIANCE.NS for Reliance (NSE India), "
+        "TCS.NS for TCS, 005930.KS for Samsung (Korea), 7203.T for Toyota (Tokyo), VOW3.DE for Volkswagen (Germany).\n"
+        "finance_history:TICKER:PERIOD - historical stock prices or chart data. "
+        "PERIOD can be 1mo, 3mo, 6mo, 1y, 2y, 5y, or max. Use this when the user asks for a chart, graph, "
+        "historical performance, or price history of a stock. Use the correct exchange ticker.\n"
         "demographics:place - population, income, or age statistics for a US state\n\n"
         "Most questions need exactly one capability: respond with just that label, or label:parameter.\n"
-        "If the question genuinely needs more than one source to answer completely, output every needed step "
+        "If the question genuinely needs more than one source, output every needed step "
         "separated by a semicolon, most important first, for example finance:TSLA;news:Tesla. "
         "Do not split a question into multiple steps unless it truly asks for more than one kind of information.\n"
         "Output only the plan, nothing else, no numbering, no explanation."
@@ -53,6 +58,18 @@ QUERY_CLASSIFICATION = PromptTemplate(
         ("Find good coffee shops near Koramangala, Bangalore", "places:coffee shops Koramangala Bangalore"),
         ("What's the population and median income of Texas?", "demographics:Texas"),
         ("What's Tesla's stock price and any recent news about them?", "finance:TSLA;news:Tesla"),
+        ("Generate a chart for Apple stock for last 1 year", "finance_history:AAPL:1y"),
+        ("Show me the price history of MSFT over the past 6 months", "finance_history:MSFT:6mo"),
+        ("Plot Reliance Industries stock performance for 2 years", "finance_history:RELIANCE.NS:2y"),
+        ("Show TCS share price chart for last 1 year", "finance_history:TCS.NS:1y"),
+        ("Samsung stock chart for 5 years", "finance_history:005930.KS:5y"),
+        ("What's the latest news in India?", "news:India latest news"),
+        ("Semiconductor industry news in Japan", "news:semiconductor industry Japan"),
+        ("Latest tech news from Germany", "news:tech news Germany"),
+        ("What's happening in the UK economy?", "news:UK economy latest"),
+        ("Infosys stock price", "finance:INFY.NS"),
+        ("What's the share price of Toyota?", "finance:7203.T"),
+        ("HDFC Bank stock price", "finance:HDFCBANK.NS"),
         (
             "How many support tickets did we close last week, and is there any news about our main competitor?",
             "sql_data;news:main competitor",
@@ -86,7 +103,7 @@ HYDE_GENERATION = PromptTemplate(
 
 RETRIEVAL_SYNTHESIS = PromptTemplate(
     task="retrieval_synthesis",
-    version="3",
+    version="4",
     system=(
         "Answer the user's question using only the numbered context passages provided.\n"
         "Cite passage numbers in square brackets immediately after each claim, like [2]. "
@@ -127,7 +144,7 @@ VERIFICATION = PromptTemplate(
 
 CONNECTOR_SYNTHESIS = PromptTemplate(
     task="connector_synthesis",
-    version="3",
+    version="4",
     system=(
         "Answer the user's question using only the structured data below from connected tools or live sources.\n"
         "Reference specific identifiers, names, and values from the data. State numbers exactly as given.\n"
@@ -136,16 +153,17 @@ CONNECTOR_SYNTHESIS = PromptTemplate(
         "- Use **bold** for the most important figures.\n"
         "- Use bullet lists when comparing multiple items.\n"
         "- Use a markdown table only for ≤8 comparable rows; the UI may render larger tables separately.\n"
-        "If the data does not answer the question, say so plainly. Do not guess or round beyond what is shown."
+        "If the data does not answer the question, say so plainly. Do not guess or round beyond what is shown.\n"
+        "For stock chart data, describe the key trends: highs, lows, overall direction, and notable movements."
     ),
 )
 
 MULTI_SOURCE_SYNTHESIS = PromptTemplate(
     task="multi_source_synthesis",
-    version="1",
+    version="2",
     system=(
         "Answer the user's question by synthesizing every source in the context below — documents, database rows, "
-        "market data, trends, and live search results may all be present.\n"
+        "market data, historical prices, trends, and live search results may all be present.\n"
         "Reason step by step internally, then write a unified answer:\n"
         "1. Identify what each source contributes.\n"
         "2. Resolve overlaps and contradictions — prefer primary data over summaries.\n"
@@ -154,6 +172,7 @@ MULTI_SOURCE_SYNTHESIS = PromptTemplate(
         "- Open with the direct answer.\n"
         "- Use ### headings when covering distinct facets (e.g. documents vs. market data).\n"
         "- Use bullet lists and small markdown tables (≤8 rows) where they aid clarity.\n"
+        "- For stock/finance data, describe trends, highs, lows, and key movements.\n"
         "Never invent facts. If a source failed or is empty, note the gap briefly."
     ),
 )
