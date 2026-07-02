@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 
+from app.llm.base import Message
 from app.llm.prompt_registry import render_prompt_with_user_message
 from app.llm.router import TaskType, router
 from app.orchestration.telemetry import record_llm_call
@@ -53,10 +54,11 @@ def _parse_plan(raw: str) -> QueryPlan:
     return QueryPlan(intent=intent, steps=steps)
 
 
-async def plan_query(query: str, llm_calls: list[dict]) -> tuple[QueryPlan, list[dict]]:
-    messages = render_prompt_with_user_message("query_classification", query)
+async def plan_query(query: str, llm_calls: list[dict], history: list[Message] | None = None) -> tuple[QueryPlan, list[dict]]:
+    messages = render_prompt_with_user_message("query_classification", query, history=history)
     response = await router.complete_with_fallback(TaskType.QUERY_CLASSIFICATION, messages, max_tokens=100)
     updated_calls = record_llm_call(
         llm_calls, "query_planning", response.provider, response.model, response.prompt_tokens, response.completion_tokens
     )
     return _parse_plan(response.content), updated_calls
+

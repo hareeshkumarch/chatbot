@@ -10,7 +10,7 @@ logger = get_logger(__name__)
 async def plan_node(state: GraphState) -> GraphState:
     llm_calls = state.get("llm_calls", [])
     try:
-        plan, llm_calls = await plan_query(state["query"], llm_calls)
+        plan, llm_calls = await plan_query(state["query"], llm_calls, state.get("history", []))
     except Exception as exc:
         logger.warning(f"planning failed, defaulting to document_qa: {exc}")
         return {**state, "intent": "document_qa", "plan": [{"capability": "document_qa", "parameter": None}], "llm_calls": llm_calls}

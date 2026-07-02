@@ -28,7 +28,7 @@ QUERY_CLASSIFICATION = PromptTemplate(
     system=(
         "Break the user's question into the data source(s) needed to answer it completely, then output a plan.\n\n"
         "Available capabilities:\n"
-        "small_talk - greetings, chit-chat, meta questions about the assistant itself (never combined with others)\n"
+        "small_talk - greetings, chit-chat, meta questions, or conversational follow-ups (e.g. requests to summarize, explain, translate, formatting changes, or refer back to the previous response) (never combined with others)\n"
         "document_qa - answerable from uploaded documents or general knowledge\n"
         "sql_data - the tenant's own database (counts, aggregates, records)\n"
         "connector_action - search or act on a connected tool (Slack, GitHub, Jira)\n"
@@ -70,6 +70,11 @@ QUERY_CLASSIFICATION = PromptTemplate(
         ("Infosys stock price", "finance:INFY.NS"),
         ("What's the share price of Toyota?", "finance:7203.T"),
         ("HDFC Bank stock price", "finance:HDFCBANK.NS"),
+        ("summarise them", "small_talk"),
+        ("explain that", "small_talk"),
+        ("summarise the headlines", "small_talk"),
+        ("write a summary of the above news", "small_talk"),
+        ("tell me more about the first point", "small_talk"),
         (
             "How many support tickets did we close last week, and is there any news about our main competitor?",
             "sql_data;news:main competitor",
